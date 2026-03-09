@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const stream = client.messages.stream({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4000,
+    const message = await client.messages.create({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 2000,
       system: CFA_SYSTEM_PROMPT,
       messages: [
         {
@@ -114,8 +114,6 @@ export async function POST(request: NextRequest) {
         },
       ],
     });
-
-    const message = await stream.finalMessage();
 
     // Extract text content from the response
     const textContent = message.content.find((block) => block.type === "text");
@@ -156,9 +154,10 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
     }
+    const message = error instanceof Error ? error.message : String(error);
     console.error("Analysis error:", error);
     return NextResponse.json(
-      { error: "Analysis failed. Please try again." },
+      { error: `Analysis failed: ${message}` },
       { status: 500 }
     );
   }
