@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Analysis, AnalysisResult } from "./types";
 import { Header } from "./components/Header";
-import { HeadlineInput } from "./components/HeadlineInput";
 import { HeadlinesFeed } from "./components/HeadlinesFeed";
 import { AnalysisDashboard } from "./components/AnalysisDashboard";
 import { EmptyState } from "./components/EmptyState";
@@ -85,23 +84,18 @@ export default function Home() {
 
           {/* Right: Analysis panel */}
           <div className="flex-1 min-w-0">
-            {/* Manual input */}
-            <div className="pb-5">
-              <HeadlineInput onAnalyze={handleAnalyze} isLoading={isLoading} />
-
-              {error && (
-                <div
-                  className="mt-3 px-4 py-3 rounded-lg text-sm"
-                  style={{
-                    background: "rgba(239,68,68,0.08)",
-                    color: "#EF4444",
-                    border: "1px solid rgba(239,68,68,0.2)",
-                  }}
-                >
-                  {error}
-                </div>
-              )}
-            </div>
+            {error && (
+              <div
+                className="mb-5 px-4 py-3 rounded-lg text-sm"
+                style={{
+                  background: "rgba(239,68,68,0.08)",
+                  color: "#EF4444",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                }}
+              >
+                {error}
+              </div>
+            )}
 
             {/* History tabs */}
             {results.length > 1 && (
