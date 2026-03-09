@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Analysis, AnalysisResult } from "./types";
 import { Header } from "./components/Header";
 import { HeadlineInput } from "./components/HeadlineInput";
+import { HeadlinesFeed } from "./components/HeadlinesFeed";
 import { AnalysisDashboard } from "./components/AnalysisDashboard";
 import { EmptyState } from "./components/EmptyState";
 import { LoadingState } from "./components/LoadingState";
@@ -73,60 +74,73 @@ export default function Home() {
       <Header isDark={isDark} onToggleTheme={toggleTheme} />
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        {/* Input Section */}
-        <div className="pt-8 pb-6">
-          <HeadlineInput onAnalyze={handleAnalyze} isLoading={isLoading} />
+        <div className="flex flex-col lg:flex-row gap-5 pt-5">
+          {/* Left: Live FT Headlines Feed */}
+          <aside
+            className="w-full lg:w-80 xl:w-96 flex-shrink-0 lg:sticky lg:top-5"
+            style={{ height: "calc(100vh - 5.5rem)", maxHeight: "calc(100vh - 5.5rem)" }}
+          >
+            <HeadlinesFeed onSelectHeadline={handleAnalyze} isAnalyzing={isLoading} />
+          </aside>
 
-          {error && (
-            <div
-              className="mt-3 px-4 py-3 rounded-lg text-sm"
-              style={{
-                background: "rgba(239,68,68,0.08)",
-                color: "#EF4444",
-                border: "1px solid rgba(239,68,68,0.2)",
-              }}
-            >
-              {error}
+          {/* Right: Analysis panel */}
+          <div className="flex-1 min-w-0">
+            {/* Manual input */}
+            <div className="pb-5">
+              <HeadlineInput onAnalyze={handleAnalyze} isLoading={isLoading} />
+
+              {error && (
+                <div
+                  className="mt-3 px-4 py-3 rounded-lg text-sm"
+                  style={{
+                    background: "rgba(239,68,68,0.08)",
+                    color: "#EF4444",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                  }}
+                >
+                  {error}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* History tabs */}
-        {results.length > 1 && (
-          <div className="flex gap-2 mb-5 overflow-x-auto pb-2">
-            {results.map((r, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveIndex(i)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer"
-                style={{
-                  background:
-                    i === activeIndex
-                      ? "var(--text-primary)"
-                      : "var(--bg-card)",
-                  color:
-                    i === activeIndex
-                      ? "var(--bg-primary)"
-                      : "var(--text-secondary)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                {r.headline.length > 40
-                  ? r.headline.substring(0, 40) + "…"
-                  : r.headline}
-              </button>
-            ))}
+            {/* History tabs */}
+            {results.length > 1 && (
+              <div className="flex gap-2 mb-5 overflow-x-auto pb-2">
+                {results.map((r, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIndex(i)}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer"
+                    style={{
+                      background:
+                        i === activeIndex
+                          ? "var(--text-primary)"
+                          : "var(--bg-card)",
+                      color:
+                        i === activeIndex
+                          ? "var(--bg-primary)"
+                          : "var(--text-secondary)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    {r.headline.length > 40
+                      ? r.headline.substring(0, 40) + "…"
+                      : r.headline}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Content */}
+            {isLoading ? (
+              <LoadingState />
+            ) : activeResult ? (
+              <AnalysisDashboard result={activeResult} />
+            ) : (
+              <EmptyState />
+            )}
           </div>
-        )}
-
-        {/* Content */}
-        {isLoading ? (
-          <LoadingState />
-        ) : activeResult ? (
-          <AnalysisDashboard result={activeResult} />
-        ) : (
-          <EmptyState />
-        )}
+        </div>
       </main>
     </div>
   );

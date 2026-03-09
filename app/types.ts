@@ -81,3 +81,11 @@ export interface AnalysisResult {
   headline: string;
   timestamp: Date;
 }
+
+export interface FTHeadline {
+  title: string;
+  link: string;
+  description: string;
+  pubDate: string;
+  category: string;
+}
