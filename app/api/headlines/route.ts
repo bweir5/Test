@@ -1,11 +1,48 @@
 import { NextResponse } from "next/server";
-import { FTHeadline } from "@/app/types";
+import { NewsHeadline } from "@/app/types";
 
-const FT_FEEDS = [
-  { url: "https://www.ft.com/rss/home", category: "Top Stories" },
-  { url: "https://www.ft.com/markets?format=rss", category: "Markets" },
-  { url: "https://www.ft.com/world?format=rss", category: "World" },
-  { url: "https://www.ft.com/companies?format=rss", category: "Companies" },
+// Multiple free RSS feeds — no API key required
+const FEEDS = [
+  {
+    url: "https://feeds.reuters.com/reuters/businessNews",
+    source: "Reuters",
+    defaultCategory: "Business",
+  },
+  {
+    url: "https://feeds.reuters.com/reuters/UKBusinessNews/",
+    source: "Reuters",
+    defaultCategory: "Markets",
+  },
+  {
+    url: "https://www.cnbc.com/id/10000664/device/rss/rss.html",
+    source: "CNBC",
+    defaultCategory: "Markets",
+  },
+  {
+    url: "https://www.cnbc.com/id/10001147/device/rss/rss.html",
+    source: "CNBC",
+    defaultCategory: "Economy",
+  },
+  {
+    url: "https://feeds.marketwatch.com/marketwatch/topstories/",
+    source: "MarketWatch",
+    defaultCategory: "Top Stories",
+  },
+  {
+    url: "https://feeds.marketwatch.com/marketwatch/marketpulse/",
+    source: "MarketWatch",
+    defaultCategory: "Market Pulse",
+  },
+  {
+    url: "https://finance.yahoo.com/rss/topfinstories",
+    source: "Yahoo Finance",
+    defaultCategory: "Finance",
+  },
+  {
+    url: "https://www.investing.com/rss/news.rss",
+    source: "Investing.com",
+    defaultCategory: "Markets",
+  },
 ];
 
 function extractTag(xml: string, tag: string): string {
@@ -18,7 +55,7 @@ function extractTag(xml: string, tag: string): string {
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, "").trim();
+  return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
 
 function decodeEntities(str: string): string {
@@ -38,30 +75,38 @@ function decodeEntities(str: string): string {
     .replace(/&#8212;/g, "\u2014");
 }
 
-function parseRSS(xml: string, defaultCategory: string): FTHeadline[] {
-  const items: FTHeadline[] = [];
+// Filter to market-relevant headlines only
+const MARKET_KEYWORDS = [
+  "fed", "rate", "inflation", "gdp", "recession", "bank", "market", "stock",
+  "bond", "yield", "dollar", "oil", "gold", "china", "economy", "ecb",
+  "central bank", "tariff", "trade", "growth", "earnings", "profit", "debt",
+  "crisis", "commodity", "currency", "interest", "monetary", "fiscal",
+  "treasury", "equity", "fund", "investment", "capital", "financial",
+  "employment", "jobs", "unemployment", "consumer", "price", "cost",
+  "export", "import", "deficit", "surplus", "quarter", "annual",
+  "geopolit", "war", "sanction", "opec", "energy",
+];
+
+function isMarketRelevant(title: string, description: string): boolean {
+  const text = (title + " " + description).toLowerCase();
+  return MARKET_KEYWORDS.some((kw) => text.includes(kw));
+}
+
+function parseRSS(xml: string, source: string, defaultCategory: string): NewsHeadline[] {
+  const items: NewsHeadline[] = [];
   const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/g;
   let match;
 
   while ((match = itemRegex.exec(xml)) !== null) {
     const itemXml = match[1];
-    const title = extractTag(itemXml, "title");
-    const link =
-      extractTag(itemXml, "link") || extractTag(itemXml, "guid");
-    const description = extractTag(itemXml, "description");
+    const title = decodeEntities(extractTag(itemXml, "title"));
+    const link = extractTag(itemXml, "link") || extractTag(itemXml, "guid");
+    const description = decodeEntities(stripHtml(extractTag(itemXml, "description"))).slice(0, 220);
     const pubDate = extractTag(itemXml, "pubDate");
-    const category = extractTag(itemXml, "category") || defaultCategory;
+    const category = decodeEntities(extractTag(itemXml, "category")) || defaultCategory;
 
-    if (title && link) {
-      items.push({
-        title: decodeEntities(title),
-        link,
-        description: description
-          ? decodeEntities(stripHtml(description)).slice(0, 200)
-          : "",
-        pubDate: pubDate || new Date().toUTCString(),
-        category: decodeEntities(category),
-      });
+    if (title && link && isMarketRelevant(title, description)) {
+      items.push({ title, link, description, pubDate: pubDate || new Date().toUTCString(), category, source });
     }
   }
 
@@ -69,53 +114,44 @@ function parseRSS(xml: string, defaultCategory: string): FTHeadline[] {
 }
 
 export async function GET() {
-  try {
-    const results = await Promise.allSettled(
-      FT_FEEDS.map(async ({ url, category }) => {
-        const response = await fetch(url, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (compatible; FTImpact/1.0; +https://ft-impact.vercel.app)",
-            Accept: "application/rss+xml, application/xml, text/xml, */*",
-          },
-          next: { revalidate: 300 }, // cache 5 min
-        });
+  const results = await Promise.allSettled(
+    FEEDS.map(async ({ url, source, defaultCategory }) => {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; MarketImpact/1.0)",
+          Accept: "application/rss+xml, application/xml, text/xml, */*",
+        },
+        next: { revalidate: 180 }, // cache upstream fetch for 3 min
+      });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
-        const xml = await response.text();
-        return parseRSS(xml, category);
-      })
-    );
+      if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+      const xml = await response.text();
+      return parseRSS(xml, source, defaultCategory);
+    })
+  );
 
-    const allHeadlines: FTHeadline[] = [];
-    const seenLinks = new Set<string>();
+  const allHeadlines: NewsHeadline[] = [];
+  const seenTitles = new Set<string>();
 
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        for (const headline of result.value) {
-          const key = headline.link.split("?")[0];
-          if (!seenLinks.has(key)) {
-            seenLinks.add(key);
-            allHeadlines.push(headline);
-          }
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      for (const h of result.value) {
+        // Deduplicate by normalised title (same story from multiple feeds)
+        const key = h.title.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 60);
+        if (!seenTitles.has(key)) {
+          seenTitles.add(key);
+          allHeadlines.push(h);
         }
       }
     }
-
-    allHeadlines.sort(
-      (a, b) =>
-        new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
-    );
-
-    return NextResponse.json(
-      { headlines: allHeadlines.slice(0, 60), fetchedAt: new Date().toISOString() },
-      { headers: { "Cache-Control": "no-store" } }
-    );
-  } catch (error) {
-    console.error("Headlines fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch headlines" },
-      { status: 500 }
-    );
   }
+
+  allHeadlines.sort(
+    (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
+  );
+
+  return NextResponse.json(
+    { headlines: allHeadlines.slice(0, 80), fetchedAt: new Date().toISOString() },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
