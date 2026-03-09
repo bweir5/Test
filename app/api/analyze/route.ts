@@ -1,11 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const CFA_SYSTEM_PROMPT = `You are a CFA charterholder with 20+ years of experience in global macro investing, asset allocation, and financial markets. You have deep expertise across all major asset classes including equities, fixed income, commodities, currencies, real estate, and alternative investments.
 
@@ -103,57 +101,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const message = await client.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 2000,
-      system: CFA_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: ANALYSIS_PROMPT(headline.trim()),
-        },
-      ],
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: CFA_SYSTEM_PROMPT,
     });
 
-    // Extract text content from the response
-    const textContent = message.content.find((block) => block.type === "text");
-    if (!textContent || textContent.type !== "text") {
-      return NextResponse.json(
-        { error: "No analysis generated" },
-        { status: 500 }
-      );
-    }
+    const result = await model.generateContent(ANALYSIS_PROMPT(headline.trim()));
+    const text = result.response.text().trim();
 
     // Parse the JSON response
     let analysis;
     try {
-      // Strip markdown code blocks if present
-      const raw = textContent.text.trim();
-      const jsonStr = raw.startsWith("```")
-        ? raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "")
-        : raw;
+      const jsonStr = text.startsWith("```")
+        ? text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "")
+        : text;
       analysis = JSON.parse(jsonStr);
     } catch {
       return NextResponse.json(
-        { error: "Failed to parse analysis", raw: textContent.text },
+        { error: "Failed to parse analysis", raw: text },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ analysis, headline: headline.trim() });
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json(
-        { error: "Invalid API key. Please check your ANTHROPIC_API_KEY." },
-        { status: 401 }
-      );
-    }
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        { status: 429 }
-      );
-    }
     const message = error instanceof Error ? error.message : String(error);
     console.error("Analysis error:", error);
     return NextResponse.json(
