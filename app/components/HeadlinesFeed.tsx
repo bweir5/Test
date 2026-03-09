@@ -45,7 +45,7 @@ export function HeadlinesFeed({ onSelectHeadline, isAnalyzing }: Props) {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/headlines");
+      const res = await fetch("/api/headlines", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch");
       setHeadlines(data.headlines);

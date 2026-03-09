@@ -109,7 +109,7 @@ export async function GET() {
 
     return NextResponse.json(
       { headlines: allHeadlines.slice(0, 60), fetchedAt: new Date().toISOString() },
-      { headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=60" } }
+      { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
     console.error("Headlines fetch error:", error);
