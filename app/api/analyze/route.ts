@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -104,7 +106,6 @@ export async function POST(request: NextRequest) {
     const stream = client.messages.stream({
       model: "claude-opus-4-6",
       max_tokens: 4000,
-      thinking: { type: "enabled", budget_tokens: 2000 },
       system: CFA_SYSTEM_PROMPT,
       messages: [
         {
