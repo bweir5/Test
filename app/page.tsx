@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Analysis, AnalysisResult } from "./types";
 import { Header } from "./components/Header";
+import { MarketTicker } from "./components/MarketTicker";
 import { HeadlinesFeed } from "./components/HeadlinesFeed";
 import { AnalysisDashboard } from "./components/AnalysisDashboard";
 import { EmptyState } from "./components/EmptyState";
@@ -19,7 +20,7 @@ export default function Home() {
     document.documentElement.classList.add("dark");
   }, []);
 
-  const handleAnalyze = useCallback(async (headline: string) => {
+  const handleAnalyze = useCallback(async (headline: string, source?: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -39,6 +40,7 @@ export default function Home() {
       const result: AnalysisResult = {
         analysis: data.analysis as Analysis,
         headline: data.headline,
+        source,
         timestamp: new Date(),
       };
 
@@ -66,18 +68,16 @@ export default function Home() {
   const activeResult = results[activeIndex] ?? null;
 
   return (
-    <div
-      className="min-h-screen transition-colors duration-200"
-      style={{ background: "var(--bg-primary)" }}
-    >
+    <div className="min-h-screen transition-colors duration-200" style={{ background: "var(--bg-primary)" }}>
       <Header isDark={isDark} onToggleTheme={toggleTheme} />
+      <MarketTicker />
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="flex flex-col lg:flex-row gap-5 pt-5">
-          {/* Left: Live FT Headlines Feed */}
+          {/* Left: Live feed */}
           <aside
             className="w-full lg:w-80 xl:w-96 flex-shrink-0 lg:sticky lg:top-5"
-            style={{ height: "calc(100vh - 5.5rem)", maxHeight: "calc(100vh - 5.5rem)" }}
+            style={{ height: "calc(100vh - 6.5rem)", maxHeight: "calc(100vh - 6.5rem)" }}
           >
             <HeadlinesFeed onSelectHeadline={handleAnalyze} isAnalyzing={isLoading} />
           </aside>
@@ -87,11 +87,7 @@ export default function Home() {
             {error && (
               <div
                 className="mb-5 px-4 py-3 rounded-lg text-sm"
-                style={{
-                  background: "rgba(239,68,68,0.08)",
-                  color: "#EF4444",
-                  border: "1px solid rgba(239,68,68,0.2)",
-                }}
+                style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}
               >
                 {error}
               </div>
@@ -106,26 +102,17 @@ export default function Home() {
                     onClick={() => setActiveIndex(i)}
                     className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer"
                     style={{
-                      background:
-                        i === activeIndex
-                          ? "var(--text-primary)"
-                          : "var(--bg-card)",
-                      color:
-                        i === activeIndex
-                          ? "var(--bg-primary)"
-                          : "var(--text-secondary)",
+                      background: i === activeIndex ? "var(--text-primary)" : "var(--bg-card)",
+                      color: i === activeIndex ? "var(--bg-primary)" : "var(--text-secondary)",
                       border: "1px solid var(--border)",
                     }}
                   >
-                    {r.headline.length > 40
-                      ? r.headline.substring(0, 40) + "…"
-                      : r.headline}
+                    {r.headline.length > 40 ? r.headline.substring(0, 40) + "…" : r.headline}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Content */}
             {isLoading ? (
               <LoadingState />
             ) : activeResult ? (

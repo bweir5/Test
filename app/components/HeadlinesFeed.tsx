@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FTHeadline } from "../types";
+import { NewsHeadline } from "../types";
 
-const CATEGORIES = ["All", "Top Stories", "Markets", "World", "Companies"];
+const SOURCES = ["All", "Reuters", "CNBC", "MarketWatch", "Yahoo Finance", "Investing.com"];
 
 function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
@@ -15,24 +15,25 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "Top Stories": "#D97706",
-  Markets: "#3B82F6",
-  World: "#10B981",
-  Companies: "#8B5CF6",
+const SOURCE_COLORS: Record<string, string> = {
+  Reuters: "#F97316",
+  CNBC: "#3B82F6",
+  MarketWatch: "#10B981",
+  "Yahoo Finance": "#8B5CF6",
+  "Investing.com": "#EC4899",
 };
 
 interface Props {
-  onSelectHeadline: (headline: string) => void;
+  onSelectHeadline: (headline: string, source: string) => void;
   isAnalyzing: boolean;
 }
 
 export function HeadlinesFeed({ onSelectHeadline, isAnalyzing }: Props) {
-  const [headlines, setHeadlines] = useState<FTHeadline[]>([]);
+  const [headlines, setHeadlines] = useState<NewsHeadline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeSource, setActiveSource] = useState("All");
   const [analyzingHeadline, setAnalyzingHeadline] = useState<string | null>(null);
 
   // Pull-to-refresh state
@@ -96,14 +97,14 @@ export function HeadlinesFeed({ onSelectHeadline, isAnalyzing }: Props) {
   }, [pullY, fetchHeadlines]);
 
   const filtered =
-    activeCategory === "All"
+    activeSource === "All"
       ? headlines
-      : headlines.filter((h) => h.category === activeCategory);
+      : headlines.filter((h) => h.source === activeSource);
 
-  const handleSelect = (headline: FTHeadline) => {
+  const handleSelect = (headline: NewsHeadline) => {
     if (isAnalyzing) return;
     setAnalyzingHeadline(headline.title);
-    onSelectHeadline(headline.title);
+    onSelectHeadline(headline.title, headline.source);
   };
 
   const pullProgress = Math.min(pullY / 52, 1);
@@ -139,7 +140,7 @@ export function HeadlinesFeed({ onSelectHeadline, isAnalyzing }: Props) {
             className="text-sm font-semibold tracking-wide"
             style={{ color: "var(--text-primary)" }}
           >
-            FT Live Feed
+            Live News Feed
           </span>
           {fetchedAt && !isLoading && (
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -182,35 +183,31 @@ export function HeadlinesFeed({ onSelectHeadline, isAnalyzing }: Props) {
         className="flex gap-1 px-3 py-2 overflow-x-auto flex-shrink-0"
         style={{ borderBottom: "1px solid var(--border)" }}
       >
-        {CATEGORIES.map((cat) => (
+        {SOURCES.map((src) => (
           <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
+            key={src}
+            onClick={() => setActiveSource(src)}
             className="flex-shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer"
             style={{
               background:
-                activeCategory === cat
-                  ? cat === "All"
+                activeSource === src
+                  ? src === "All"
                     ? "var(--text-primary)"
-                    : CATEGORY_COLORS[cat] + "22"
+                    : (SOURCE_COLORS[src] ?? "#6B7280") + "22"
                   : "transparent",
               color:
-                activeCategory === cat
-                  ? cat === "All"
+                activeSource === src
+                  ? src === "All"
                     ? "var(--bg-primary)"
-                    : CATEGORY_COLORS[cat] || "var(--text-primary)"
+                    : SOURCE_COLORS[src] ?? "var(--text-primary)"
                   : "var(--text-muted)",
               border:
-                activeCategory === cat
-                  ? `1px solid ${
-                      cat === "All"
-                        ? "var(--text-primary)"
-                        : CATEGORY_COLORS[cat] || "var(--border)"
-                    }`
+                activeSource === src
+                  ? `1px solid ${src === "All" ? "var(--text-primary)" : SOURCE_COLORS[src] ?? "var(--border)"}`
                   : "1px solid transparent",
             }}
           >
-            {cat}
+            {src}
           </button>
         ))}
       </div>
@@ -305,7 +302,7 @@ export function HeadlinesFeed({ onSelectHeadline, isAnalyzing }: Props) {
             {filtered.map((headline, i) => {
               const isActive = analyzingHeadline === headline.title;
               const catColor =
-                CATEGORY_COLORS[headline.category] || "var(--text-muted)";
+                SOURCE_COLORS[headline.source] || "var(--text-muted)";
               return (
                 <button
                   key={`${headline.link}-${i}`}
@@ -359,7 +356,7 @@ export function HeadlinesFeed({ onSelectHeadline, isAnalyzing }: Props) {
                           className="text-xs font-medium"
                           style={{ color: catColor }}
                         >
-                          {headline.category}
+                          {headline.source}
                         </span>
                         <span
                           className="text-xs"

@@ -64,7 +64,7 @@ export function Header({ isDark, onToggleTheme }: HeaderProps) {
             className="hidden sm:block text-xs"
             style={{ color: "var(--text-muted)" }}
           >
-            Powered by Claude Opus
+            For CFA Candidates &amp; Charterholders
           </span>
 
           {/* Theme toggle */}
